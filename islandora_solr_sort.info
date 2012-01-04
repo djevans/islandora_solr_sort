@@ -1,0 +1,4 @@
+name = Islandora Solr Sort
+package = Islandora Search
+dependencies[]= islandora_solr_search
+core = 6.x

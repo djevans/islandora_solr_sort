@@ -1,0 +1,86 @@
+<?php
+
+/**
+ * Implements hook_islandora_solr_query_blocks()
+ */
+function islandora_solr_sort_islandora_solr_query_blocks() {
+  return array(
+    'sort_options' => array(
+      'name' => 'Islandora Solr Sort Options',
+      'module' => 'islandora_solr_sort',
+      'file' => 'IslandoraSolrSortOptions.inc',
+      'class' => 'IslandoraSolrSortOptions',
+      'function' => 'displaySortOptions',
+      'form' => NULL,
+    ),
+  );
+}
+
+function islandora_solr_sort_output_link($text, $link_path, $options, $active, $direction, $queryProcessor) {
+  if ($direction) {
+    $icon = ' '. theme('tablesort_indicator', $direction);
+  }
+  if ($active) {
+    if (isset($options['attributes']['class'])) {
+      $options['attributes']['class'] .= ' active';
+    }
+    else {
+      $options['attributes']['class'] = 'active';
+    }
+  }
+  return islandora_solr_sort_l($text, $link_path, $options, $queryProcessor);
+}
+
+function islandora_solr_sort_l($text, $link_path, $options, $queryProcessor) {
+  
+  // Merge in defaults.
+  $options += array(
+    'attributes' => array(),
+    'html' => FALSE,
+    'query' => array(),
+  );
+
+  // Don't need this, and just to be safe.
+  unset($options['attributes']['title']);
+  // Double encode + characters for clean URL Apache quirks.
+  if (variable_get('clean_url', '0')) {
+    $link_path = str_replace('+', '%2B', $link_path);
+  }
+
+  // Retain GET parameters that ApacheSolr knows nothing about.
+  $get = array_diff_key(
+    $_GET, 
+    array('q' => 1, 'page' => 1), // remove the q and page keys from the array
+    $options['query'] // don't need to re-add the existing keys
+    // _islandora_solr_sort_get_query_values($queryProcessor)
+  );
+  $options['query'] += $get;
+  if (preg_match('/active/', $options['attributes']['class'])) {
+    return $options['html'] ? $text : check_plain(html_entity_decode($text)); 
+  }
+  else {
+    return '<a href="'. check_url(url($link_path, $options)) .'"'. drupal_attributes($options['attributes']) .'>'. ($options['html'] ? $text : check_plain(html_entity_decode($text))) .'</a>';    
+  }
+
+}
+
+function _islandora_solr_sort_get_query_values($processor) {
+  $sort = $processor->solrParams['sort']; 
+  if (preg_match('/^score(\W\w+)?/',$sort)) {
+    return array();
+  }
+  else {
+    return array('sort' => $sort);
+  }
+}
+
+/**
+ * Implements hook_islandora_solr_search_query_processor().
+ * But why???
+ */
+function islandora_solr_sort_islandora_solr_search_query_processor($queryProcessor) {
+  // get the sort value from the query string and inject it back into the $queryProcessor
+  if (isset($_GET['sort'])) {
+    $queryProcessor->solrParams['sort'] = $_GET['sort'];
+  }
+}
